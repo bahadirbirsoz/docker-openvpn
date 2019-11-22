@@ -103,6 +103,7 @@ usage() {
     echo " -N    Configure NAT to access external server network"
     echo " -t    Use TAP device (instead of TUN device)"
     echo " -T    Encrypt packets with the given cipher algorithm instead of the default one (tls-cipher)."
+    echo " -U    dUplicate CN"
     echo " -z    Enable comp-lzo compression."
 }
 
@@ -150,6 +151,7 @@ OVPN_COMP_LZO=0
 OVPN_DEFROUTE=1
 OVPN_DEVICE="tun"
 OVPN_DEVICEN=0
+OVPN_DUPLICATE_CN=''
 OVPN_DISABLE_PUSH_BLOCK_DNS=0
 OVPN_DNS=1
 OVPN_DNS_SERVERS=()
@@ -172,7 +174,7 @@ OVPN_TLS_CIPHER=''
 [ -r "$OVPN_ENV" ] && source "$OVPN_ENV"
 
 # Parse arguments
-while getopts ":a:e:E:C:T:r:s:du:bcp:n:k:DNm:f:tz2" opt; do
+while getopts ":a:e:E:C:T:r:s:dUu:bcp:n:k:DNm:f:tz2" opt; do
     case $opt in
         a)
             OVPN_AUTH="$OPTARG"
@@ -216,6 +218,9 @@ while getopts ":a:e:E:C:T:r:s:du:bcp:n:k:DNm:f:tz2" opt; do
             ;;
         c)
             OVPN_CLIENT_TO_CLIENT=1
+            ;;
+        U)
+            OVPN_DUPLICATE_CN=1
             ;;
         p)
             mapfile -t TMP_PUSH <<< "$OPTARG"
@@ -332,7 +337,7 @@ persist-tun
 
 proto $OVPN_PROTO
 # Rely on Docker to do port mapping, internally always 1194
-port 1194
+port $OVPN_PORT
 dev $OVPN_DEVICE$OVPN_DEVICEN
 status /tmp/openvpn-status.log
 
@@ -349,6 +354,8 @@ fi
 [ -n "$OVPN_TLS_CIPHER" ] && echo "tls-cipher $OVPN_TLS_CIPHER" >> "$conf"
 [ -n "$OVPN_CIPHER" ] && echo "cipher $OVPN_CIPHER" >> "$conf"
 [ -n "$OVPN_AUTH" ] && echo "auth $OVPN_AUTH" >> "$conf"
+
+[ -n "${OVPN_DUPLICATE_CN:-}" ] && echo "duplicate_cn" >> "$conf"
 
 [ -n "${OVPN_CLIENT_TO_CLIENT:-}" ] && echo "client-to-client" >> "$conf"
 [ "$OVPN_COMP_LZO" == "1" ] && echo "comp-lzo" >> "$conf"
